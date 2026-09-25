@@ -1,5 +1,8 @@
 # Github's C.gitignore.
 
+# Codex CLI
+.codex/
+
 # Prerequisites
 *.d
 
