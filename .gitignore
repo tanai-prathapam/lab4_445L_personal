@@ -153,3 +153,11 @@ resources/Documentation
 
 # Microsoft Office Temp files 
 ~$*
+
+# Ignore codex directories
+.codex/
+AGENTS.md
+
+# Ignore macOS system files
+.DS_Store
+__MACOSX/
