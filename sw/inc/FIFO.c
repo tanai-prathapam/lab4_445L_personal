@@ -78,4 +78,3 @@ char RxFifo_Get(void){char data;
 uint32_t RxFifo_Size(void){
   return (RxPutI-RxGetI)&(RXFIFOSIZE-1);
 }
-

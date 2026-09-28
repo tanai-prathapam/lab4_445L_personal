@@ -1,3 +1,5 @@
+#ifndef __FIFO_LIB_H__
+#define __FIFO_LIB_H__
 /*!
  * @defgroup FIFO
  * @brief First in first out queue
@@ -17,11 +19,6 @@
  * @date      August 13, 2023
 
  */
-
-
-
-#ifndef __FIFO_H__
-#define __FIFO_H__
 
 
 /**
