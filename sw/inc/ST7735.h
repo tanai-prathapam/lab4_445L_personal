@@ -396,7 +396,8 @@ uint16_t ST7735_SwapColor(uint16_t x) ;
  * @brief  Displays a BMP image 
  */
 void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, int16_t h);
-
+uint16_t ST7735_ScaleColor(uint16_t color, uint8_t brightness);
+void ST7735_DrawBitmapDim(int16_t x, int16_t y, const uint16_t *image, int16_t w, int16_t h, uint8_t brightness);
 /**
  * Simple character draw function.  This is the same function from
  * Adafruit_GFX.c but adapted for this processor.  However, each call

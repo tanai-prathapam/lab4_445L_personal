@@ -41,51 +41,6 @@
  http://users.ece.utexas.edu/~valvano/
  */
 
-// hardware connections
-// **********ST7735 TFT and SDC*******************
-// ST7735
-// Backlight (pin 10)     to +3.3 V
-// MISO (pin 9) (NC)
-// SCK (pin 8)            to SPI1 SCLK: PB9
-// MOSI (pin 7)           to SPI1 PICO: PB8
-// TFT_CS (pin 6)         to SPI1 CS0:  PB6
-// CARD_CS (pin 5) (NC)
-// Data/Command (pin 4)   to PA13 (GPIO), high for data, low for command
-// RESET (pin 3)          to PB15 (GPIO)
-// VCC (pin 2)            to +3.3 V
-// Gnd (pin 1)            to ground
-
-// **********wide.hk ST7735R with ADXL345 accelerometer *******************
-// Silkscreen Label (SDC side up; LCD side down) - Connection
-// VCC  - +3.3 V
-// GND  - Ground
-// !SCL - SPI1 SCLK: PB9 clock
-// !SDA - SPI1 PICO: PB8 MOSI SPI data from microcontroller to TFT or SDC
-// DC   - GPIO       PA13 TFT data/command
-// RES  - GPIO       PB15 TFT reset
-// CS   - SPI1 CS0:  PB6 TFT_CS, active low to enable TFT
-// *CS  - (NC) SDC_CS, active low to enable SDC
-// MISO - (NC) MISO SPI data from SDC to microcontroller
-// SDA  - (NC) I2C data for ADXL345 accelerometer
-// SCL  - (NC) I2C clock for ADXL345 accelerometer
-// SDO  - (NC) I2C alternate address for ADXL345 accelerometer
-// Backlight + - Light, backlight connected to +3.3 V
-
-// **********wide.hk ST7735R with ADXL335 accelerometer *******************
-// Silkscreen Label (SDC side up; LCD side down) - Connection
-// VCC  - +3.3 V
-// GND  - Ground
-// !SCL - SPI1 SCLK: PB9
-// !SDA - SPI1 PICO: PB8 MOSI SPI data from microcontroller to TFT or SDC
-// DC   - GPIO       PA13 TFT data/command
-// RES  - GPIO       PB15 TFT reset
-// CS   - SPI1 CS0:  PB6 TFT_CS, active low to enable TFT
-// *CS  - (NC) SDC_CS, active low to enable SDC
-// MISO - (NC) MISO SPI data from SDC to microcontroller
-// X- (NC) analog input X-axis from ADXL335 accelerometer
-// Y- (NC) analog input Y-axis from ADXL335 accelerometer
-// Z- (NC) analog input Z-axis from ADXL335 accelerometer
-// Backlight + - Light, backlight connected to +3.3 V
 
 // **********HiLetgo ST7735 TFT and SDC (SDC not tested)*******************
 // ST7735
@@ -104,16 +59,6 @@
 // VCC    (pin 2)       to +3.3 V
 // GND    (pin 1)       to ground
 
-// Tyenaza Tyenazaqhf72mi9s3
-// ST7735
-// LED (pin 8)              to +3.3 V
-// SCK (pin 7) SCLK         to PB9 SPI1 SCLK
-// SDA (pin 6) MOSI,        to PB8 SPI1 PICO
-// A0  (pin 5) Data/Command to PA13 (GPIO), high for data, low for command
-// RESET (pin 4)            to PB15 (GPIO), low to reset
-// CS  (pin 3)              to PB6 SPI1 CS0:
-// Gnd (pin 2)              to ground
-// VCC (pin 1)              to +3.3 V
 
 #include <ti/devices/msp/msp.h>
 #include "../inc/ST7735.h"
@@ -1024,6 +969,50 @@ void ST7735_DrawBitmap(int16_t x, int16_t y, const uint16_t *image, int16_t w, i
   }
 
 //  deselect();
+}
+
+// Scale a packed B5-G6-R5 color by brightness (0 to 255)
+static uint16_t ScaleColorBGR565(uint16_t color, uint8_t brightness){
+  uint32_t b5 = (color >> 11) & 0x1F;
+  uint32_t g6 = (color >> 5)  & 0x3F;
+  uint32_t r5 =  color        & 0x1F;
+  b5 = (b5 * brightness) / 255;
+  g6 = (g6 * brightness) / 255;
+  r5 = (r5 * brightness) / 255;
+  return (uint16_t)((b5 << 11) | (g6 << 5) | r5);
+}
+
+// Public wrapper, for scaling line/text colors before drawing
+uint16_t ST7735_ScaleColor(uint16_t color, uint8_t brightness){
+  return ScaleColorBGR565(color, brightness);
+}
+
+//------------ST7735_DrawBitmapDim------------
+// Same as ST7735_DrawBitmap, but scales every pixel by brightness (0=black,255=full)
+void ST7735_DrawBitmapDim(int16_t x, int16_t y, const uint16_t *image, int16_t w, int16_t h, uint8_t brightness){
+  int16_t skipC = 0;
+  int16_t originalWidth = w;
+  int i = w*(h - 1);
+  uint16_t px;
+
+  if((x >= _width) || ((y - h + 1) >= _height) || ((x + w) <= 0) || (y < 0)) return;
+  if((w > _width) || (h > _height)) return;
+  if((x + w - 1) >= _width){ skipC = (x + w) - _width; w = _width - x; }
+  if((y - h + 1) < 0){ i = i - (h - y - 1)*originalWidth; h = y + 1; }
+  if(x < 0){ w = w + x; skipC = -1*x; i = i - x; x = 0; }
+  if(y >= _height){ h = h - (y - _height + 1); y = _height - 1; }
+
+  setAddrWindow(x, y-h+1, x+w-1, y);
+  for(y=0; y<h; y=y+1){
+    for(x=0; x<w; x=x+1){
+      px = ScaleColorBGR565(image[i], brightness);
+      SPI_OutData((uint8_t)(px >> 8));
+      SPI_OutData((uint8_t)px);
+      i = i + 1;
+    }
+    i = i + skipC;
+    i = i - 2*originalWidth;
+  }
 }
 
 
