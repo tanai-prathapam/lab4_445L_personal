@@ -20,7 +20,7 @@
 #include <ti/devices/msp/msp.h>
 #include "../inc/Clock.h"
 #include "../inc/Timer.h"
-#include "../inc/Sound.h"
+#include "../lib/Sound.h"
 #include "../inc/LaunchPad.h" //PB4INDEX  
 
 // TODO: verify this PINCM index against your KiCad schematic's chosen

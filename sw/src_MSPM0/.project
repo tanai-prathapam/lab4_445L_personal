@@ -60,5 +60,20 @@
 			<type>1</type>
 			<locationURI>PARENT-1-PROJECT_LOC/inc/UARTbusywait.c</locationURI>
 		</link>
+		<link>
+            		<name>ADC.c</name>
+            		<type>1</type>
+            		<locationURI>PARENT-1-PROJECT_LOC/inc/ADC.c</locationURI>
+        	</link>
+        	<link>
+            		<name>Sound.c</name>
+            		<type>1</type>
+            		<locationURI>PARENT-1-PROJECT_LOC/lib/Sound.c</locationURI>
+        	</link>
+		<link>
+            		<name>ADC.c</name>
+            		<type>1</type>
+            		<locationURI>PARENT-1-PROJECT_LOC/lib/ADC.c</locationURI>
+        	</link>
 	</linkedResources>
 </projectDescription>

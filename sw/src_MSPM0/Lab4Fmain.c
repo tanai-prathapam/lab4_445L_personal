@@ -24,9 +24,12 @@
 #include "../inc/ST7735.h"
 #include "../inc/Timer.h"
 #include "Lab3.h"
-#include "../lib/Sound.h"
+#include <math.h>
 #include "../inc/ADC.h"
+#include "../lib/ADC.h"
+#include "../lib/Sound.h"
 #include "../lib/ClockFace.h"   // provides: const unsigned short clock[6400]  (80x80 bitmap)
+#include "../inc/UART.h"
 
 
 

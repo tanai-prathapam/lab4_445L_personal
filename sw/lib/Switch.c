@@ -16,7 +16,7 @@
  */
 #include <stdint.h>
 #include <ti/devices/msp/msp.h>
-#include "../inc/Switch.h"
+#include "../lib/Switch.h"
 
 #define PA18INDEX 39
 #define PB21INDEX 48
