@@ -37,7 +37,7 @@
 
 static volatile uint32_t SoundActive;
 extern volatile uint32_t ADC_Volume_raw; // Pulls the live slidepot data from main.c
-extern volatile uint32_t ADC_Value_Human; // Sends to websocket from main.c
+//extern volatile uint32_t ADC_Value_Human; // Sends to websocket from main.c
 
 void Sound_Init(uint32_t priority){
   IOMUX->SECCFG.PINCM[SOUND_PINCM_INDEX] = 0x00000081; // GPIO output
@@ -72,8 +72,8 @@ void TIMG7_IRQHandler(void){
   TIMG7->CPU_INT.ICLR = 0x01; // acknowledge/clear the TIMG7 interrupt flag
 
   if (SoundActive) {
-    //Update Human Readable Value out of 100
-    ADC_Value_Human = (ADC_Volume_raw * 100) / 4095; 
+    //Update Human Readable Value out of 100 (done directly in main)
+    //ADC_Value_Human = (ADC_Volume_raw * 100) / 4095; 
     
     // 12-bit ADC (0 to 4095) to a High_Time.
     uint32_t high_time = (ADC_Volume_raw * 500) / 4095; 

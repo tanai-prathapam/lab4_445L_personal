@@ -255,8 +255,8 @@ void Draw_Set_Screen(char* title, uint32_t display_hours, uint32_t display_mins)
 
 
 //Global Variables
-volatile uint32_t ADC_Volume_raw = 0; //samples the
-volatile uint32_t ADC_Value_Human = 0; //samples the
+volatile uint32_t ADC_Volume_raw = 0; //Pulls the live slidepot data
+volatile uint32_t ADC_Value_Human = 0; //Sends to websocket
 volatile uint32_t DisplayMode = 0; //digital = 0, analog = 1
 volatile uint32_t Screen_sel = 0; //Which Screen display we are seeing on the LCD
 volatile uint32_t DisplayUpdate = 1; // Start at 1 to draw the initial screen
@@ -298,6 +298,11 @@ int main(void){
 
   while(1){               // interrupts every 1ms
 
+    // Sample the slidepot: This value (0 to 4095) will beread by Sound ISR
+    ADC_Volume_raw = ADC_In5();
+
+    ADC_Value_Human = (ADC_Volume_raw * 100) / 4095; //calculates the human representation of volume from 0 to 100
+
 
     // Build CSV string to send to Web Application// Student writes this
     if (Send_Flag == 1) {
@@ -312,8 +317,7 @@ int main(void){
       Send_Flag = 0; 
     }
 
-    // Sample the slidepot: This value (0 to 4095) will beread by Sound ISR
-    ADC_Volume_raw = ADC_In5();
+    
 
     //Button and Screen Select Logic
     Button_Screen_Logic();
