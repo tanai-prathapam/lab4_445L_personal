@@ -85,6 +85,17 @@ volatile uint32_t NewTime = 1;  // flag: 1 means display needs updating
 volatile uint8_t Send_Flag = 0;
 
 #define ESP8266_RST (1<<25)  // PA25
+#define ESP8266_RDY    (1<<19)   // PB19 (RSLK2 boards may use PB9)
+
+#define RDY_TIMEOUT_MS 30000
+volatile uint8_t WifiReady = 0;
+
+void Debug_OutString(const char *s){
+  while(*s){
+    UART_OutChar(*s);
+    s++;
+  }
+}
 
 void RESET_8266(void){
   // Initialize reset port on PA25 as GPIO Output
@@ -99,24 +110,25 @@ void RESET_8266(void){
   // Give the ESP8266 time to initialize before asking if it is ready
   Clock_Delay1ms(500); 
 
-  UART1_OutString("\n\rResetting the ESP8266\n\r");
+  Debug_OutString("\n\rResetting the ESP8266\n\r");
 }
 
-#define ESP8266_RDY (1<<19)  // PB19
 
-void SETUP_WIFI(void) {
-  // Setup RDY input on PB19
-  // 0x00040081 sets INENA (Input Enable) and PF=1 (GPIO)
-  IOMUX->SECCFG.PINCM[PB19INDEX] = 0x00040081; 
 
-  UART1_OutString("\n\rWaiting for WiFi RDY signal to be asserted\n\r");
-
-  // Loop until RDY input is valid 
+uint8_t SETUP_WIFI(void) {
+  uint32_t waited = 0;
+  IOMUX->SECCFG.PINCM[PB19INDEX] = 0x00040081;
+  Debug_OutString("\n\rWaiting for WiFi RDY\n\r");
   while((GPIOB->DIN31_0 & ESP8266_RDY) == 0){
-      // Spin and wait. The MSPM0 halts here until the Wi-Fi connects.
+    if(waited >= RDY_TIMEOUT_MS){
+      Debug_OutString("\n\rRDY timeout\n\r");
+      return 0;
+    }
+    Clock_Delay1ms(1);
+    waited++;
   }
-      
-  UART1_OutString("\n\rRDY signal asserted\n\r");
+  Debug_OutString("\n\rRDY asserted\n\r");
+  return 1;
 }
 
 void Input(void){
@@ -304,27 +316,33 @@ int main(void){
   NVIC->ICER[0] = (1U << 16);
   NVIC->ICPR[0] = (1U << 16);
 
-  LaunchPad_Init();
-  Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
-  UART_Init();        // Setup Debug UART port
-  UART1_Init();       // UART channel to ESP8266
-  RESET_8266();       // Reset the WiFi chip
-  SETUP_WIFI();       // Setup the Wifi channel and Wait for RDY Signal
-  ST7735_InitR(INITR_REDTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
+    LaunchPad_Init();
+  Clock_Init_HFXT_40_80MHz(0);
+  UART_Init();          // debug UART
+  UART1_Init();         // ESP UART, now ready before any use
+  ST7735_InitR(INITR_REDTAB);
   ST7735_FillScreen(ST7735_BLACK);
   ST7735_SetCursor(0, 0);
+  ST7735_OutString("Starting ESP...\n");
+  RESET_8266();
+  WifiReady = SETUP_WIFI();
+  if(!WifiReady){
+    ST7735_OutString("WiFi not ready\n");
+    Clock_Delay1ms(2000);
+  }
+  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_FillScreen(ST7735_BLACK);   // clear status text
   Switch_Init();
-  Speaker_Init();         // PB4 squarewave to speaker
+  Speaker_Init();
   LED_Init();
   ADC_Init5();
-  Sound_Disable();
+  Sound_Disable();      // removed the extra Sound_Enable()
 
-  Sound_Enable();
-
-  // Arm TIMG0 for a 1ms periodic interrupt to drive Hours/Minutes/Seconds
   TimerG0_IntArm(TIMERG0_PERIOD, TIMERG0_PRESCALE, TIMERG0_PRIORITY);
-
   __enable_irq();
+
+  // ESP boot chatter may contain digits that look like commands, so discard it
+  while(RxFifo1_Size() > 0){ (void)RxFifo1_Get(); }
 
   while(1){               // interrupts every 1ms
 
