@@ -33,11 +33,53 @@
 #include "../lib/UART.h"
 #include "../lib/FIFO.h"
 
+
+// ----------------------------------------------------------------------------
+// ----------------------       MAIN       ------------------------------------
+// ----------------------------------------------------------------------------
+
+//Function Declarations
+void Speaker_Init(void);
+void Switch_Init(void);
+void LED_Init(void);
+void LED_Out(uint32_t data);
+void LED_Toggle(void);
+void Clock_Display(void);
+uint32_t Get_Button1_Press(void);
+uint32_t Get_Button2_Press(void);
+void Button_Screen_Logic(void);
+void Clock_DisplayAnalog(void);
+void Screen_Display(void);
+void Draw_Set_Screen(char* title, uint32_t display_hours, uint32_t display_mins);
+
+
+//Global Variables
+volatile uint32_t ADC_Volume_raw = 0; //Pulls the live slidepot data
+volatile uint32_t ADC_Value_Human = 0; //Sends to websocket
+volatile uint32_t DisplayMode = 0; //digital = 0, analog = 1
+volatile uint32_t Screen_sel = 0; //Which Screen display we are seeing on the LCD
+volatile uint32_t DisplayUpdate = 1; // Start at 1 to draw the initial screen
+volatile uint32_t CursorPos = 0; // Start at option 0 of main menu
+volatile uint32_t AlarmBannerDrawn = 0; //Latch so the "ALARM!" banner paints exactly once per
+// ring instead of repainting every main-loop pass while it's sounding
+
+volatile uint32_t Btn1_Press_Count = 0; //debug
+volatile uint32_t Btn2_Press_Count = 0; //debug
+
 // Global Clock State
 volatile uint8_t Mode = 0;   // 0 = 12-hour, 1 = 24-hour
 volatile uint8_t Hour = 12;
 volatile uint8_t Minute = 0;
 volatile uint8_t Second = 0;
+
+// Time-of-day globals, maintained by TIMG0_IRQHandler, read by main()
+// NOTE: these are shared between the ISR (writer) and main() (reader).
+// See critical-section handling in Clock_Display() below.
+volatile uint32_t ms = 0;       // milliseconds, 0 to 999
+volatile uint32_t Seconds = 0;  // 0 to 59
+volatile uint32_t Minutes = 0;  // 0 to 59
+volatile uint32_t Hours   = 12; // 0 to 23, starting time -- change as needed
+volatile uint32_t NewTime = 1;  // flag: 1 means display needs updating
 
 // Flag to trigger Wi-Fi transmission
 volatile uint8_t Send_Flag = 0;
@@ -79,53 +121,78 @@ void SETUP_WIFI(void) {
 
 void Input(void){
   // Student writes this
-  char ws_cmd;
-  
-  if(RxFifo1_Size() > 0){ // if unread data in  FIFO
-    ws_cmd = RxFifo1_Get(); //get next character (oldest)
-    UART1_OutChar(ws_cmd); //debug uart
-    uint8_t cmd_num = ws_cmd - '0';   // ASCII to int conversion
-  
-    // Command #1: Toggle MODE select 
-    if(cmd_num == 0x1)  {  
-        if (Mode == 0x1) Mode =0x0;
-        else if (Mode == 0x0) Mode = 0x1;
+  //char ws_cmd;
+  while(RxFifo1_Size() > 0){
+    char c = RxFifo1_Get();
+    UART_OutChar(c);              // debug UART only
+    __disable_irq();
+    switch(c){
+      case '1': Mode ^= 1; break;
+      case '2': Hours   = (Hours+1)%24; break;
+      case '3': Hours   = (Hours==0)?23:Hours-1; break;
+      case '4': Minutes = (Minutes+1)%60; break;
+      case '5': Minutes = (Minutes==0)?59:Minutes-1; break;
+      case '6': Seconds = (Seconds+1)%60; break;
+      case '7': Seconds = (Seconds==0)?59:Seconds-1; break;
+      default: break;             // ignores '\n' and '\r'
     }
-
-    // Command #2: Hour ++
-    else if (cmd_num == 0x2) {
-      Hour = (Hour + 1) % 24;
-    }  
-
-    // Command #3: Hour --
-    else if (cmd_num == 0x3) {
-      if (Hour == 0) Hour = 23;
-      else Hour--;
-    }
-
-    // Command #4: Min ++
-    else if (cmd_num == 0x4) {
-      Minute = (Minute + 1) % 60;
-    }
-
-    // Command #5: Min --
-    else if (cmd_num == 0x5) {
-      if (Minute == 0) Minute = 59;
-      else Minute--;
-    }
-
-    // Command #6: Sec ++
-    else if (cmd_num == 0x6) {
-      Second = (Second + 1) % 60;
-    }
-
-    // Command #7: Sec --
-    else if (cmd_num == 0x7) {
-      if (Second == 0) Second = 59;
-      else Second--;
-    }
+    __enable_irq();
+    NewTime = 1;
+    DisplayUpdate = 1;
+    Send_Flag = 1;   // echo new time to the web page right away
   }
+
+    // if(RxFifo1_Size() > 0){ // if unread data in  FIFO
+  //   char ws_cmd = RxFifo1_Get(); //get next character (oldest)
+  //   UART1_OutChar(ws_cmd); //debug uart
+  //   __disable_irq();
+  //   uint8_t cmd_num = ws_cmd - '0';   // ASCII to int conversion
+  
+  //   // Command #1: Toggle MODE select 
+  //   if(cmd_num == 0x1)  {  
+  //       if (Mode == 0x1) Mode =0x0;
+  //       else if (Mode == 0x0) Mode = 0x1;
+  //   }
+
+  //   // Command #2: Hour ++
+  //   else if (cmd_num == 0x2) {
+  //     Hour = (Hour + 1) % 24;
+  //   }  
+
+  //   // Command #3: Hour --
+  //   else if (cmd_num == 0x3) {
+  //     if (Hour == 0) Hour = 23;
+  //     else Hour--;
+  //   }
+
+  //   // Command #4: Min ++
+  //   else if (cmd_num == 0x4) {
+  //     Minute = (Minute + 1) % 60;
+  //   }
+
+  //   // Command #5: Min --
+  //   else if (cmd_num == 0x5) {
+  //     if (Minute == 0) Minute = 59;
+  //     else Minute--;
+  //   }
+
+  //   // Command #6: Sec ++
+  //   else if (cmd_num == 0x6) {
+  //     Second = (Second + 1) % 60;
+  //   }
+
+  //   // Command #7: Sec --
+  //   else if (cmd_num == 0x7) {
+  //     if (Second == 0) Second = 59;
+  //     else Second--;
+  //   }
+
+  //   __enable_irq();
+  //   NewTime = 1;
+  // }
 }
+
+
   int main0(void){ // main0 test of LCD
   __disable_irq(); 
   LaunchPad_Init();
@@ -142,14 +209,7 @@ void Input(void){
   } 
 } 
 
-// Time-of-day globals, maintained by TIMG0_IRQHandler, read by main()
-// NOTE: these are shared between the ISR (writer) and main() (reader).
-// See critical-section handling in Clock_Display() below.
-volatile uint32_t ms = 0;       // milliseconds, 0 to 999
-volatile uint32_t Seconds = 0;  // 0 to 59
-volatile uint32_t Minutes = 0;  // 0 to 59
-volatile uint32_t Hours   = 12; // 0 to 23, starting time -- change as needed
-volatile uint32_t NewTime = 1;  // flag: 1 means display needs updating
+
 
 // Alarm globals
 volatile uint32_t AlarmSeconds = 0;  // 0 to 59
@@ -235,37 +295,7 @@ void TIMG0_IRQHandler(void){// runs every 1ms
 }
 
 
-// ----------------------------------------------------------------------------
-// ----------------------       MAIN       ------------------------------------
-// ----------------------------------------------------------------------------
 
-//Function Declarations
-void Speaker_Init(void);
-void Switch_Init(void);
-void LED_Init(void);
-void LED_Out(uint32_t data);
-void LED_Toggle(void);
-void Clock_Display(void);
-uint32_t Get_Button1_Press(void);
-uint32_t Get_Button2_Press(void);
-void Button_Screen_Logic(void);
-void Clock_DisplayAnalog(void);
-void Screen_Display(void);
-void Draw_Set_Screen(char* title, uint32_t display_hours, uint32_t display_mins);
-
-
-//Global Variables
-volatile uint32_t ADC_Volume_raw = 0; //Pulls the live slidepot data
-volatile uint32_t ADC_Value_Human = 0; //Sends to websocket
-volatile uint32_t DisplayMode = 0; //digital = 0, analog = 1
-volatile uint32_t Screen_sel = 0; //Which Screen display we are seeing on the LCD
-volatile uint32_t DisplayUpdate = 1; // Start at 1 to draw the initial screen
-volatile uint32_t CursorPos = 0; // Start at option 0 of main menu
-volatile uint32_t AlarmBannerDrawn = 0; //Latch so the "ALARM!" banner paints exactly once per
-// ring instead of repainting every main-loop pass while it's sounding
-
-volatile uint32_t Btn1_Press_Count = 0; //debug
-volatile uint32_t Btn2_Press_Count = 0; //debug
 
 int main(void){
   __disable_irq();
@@ -277,9 +307,9 @@ int main(void){
   LaunchPad_Init();
   Clock_Init_HFXT_40_80MHz(0);  // 0.005% accurate running off external crystal oscillator
   UART_Init();        // Setup Debug UART port
+  UART1_Init();       // UART channel to ESP8266
   RESET_8266();       // Reset the WiFi chip
   SETUP_WIFI();       // Setup the Wifi channel and Wait for RDY Signal
-  UART1_Init();       // UART channel to ESP8266
   ST7735_InitR(INITR_REDTAB); //INITR_REDTAB for AdaFruit, INITR_BLACKTAB for SPI HiLetgo ST7735R
   ST7735_FillScreen(ST7735_BLACK);
   ST7735_SetCursor(0, 0);
@@ -298,18 +328,23 @@ int main(void){
 
   while(1){               // interrupts every 1ms
 
+    Input();
     // Sample the slidepot: This value (0 to 4095) will beread by Sound ISR
     ADC_Volume_raw = ADC_In5();
 
     ADC_Value_Human = (ADC_Volume_raw * 100) / 4095; //calculates the human representation of volume from 0 to 100
-
+    
 
     // Build CSV string to send to Web Application// Student writes this
     if (Send_Flag == 1) {
       char csv_string[40];
+      uint32_t h, m, s;
+      __disable_irq();
+      h = Hours; m = Minutes; s = Seconds;
+      __enable_irq();
       
       // Build CSV string: "Mode,Hour,Minute,Second\n"
-      sprintf(csv_string, "%d,%d,%d,%d,%d\n", Mode, Hour, Minute, Second, ADC_Value_Human);
+      sprintf(csv_string, "%d,%lu,%lu,%lu,%lu\n",Mode, (unsigned long)h, (unsigned long)m,(unsigned long)s, (unsigned long)ADC_Value_Human);
       
       // Send to ESP8266 via UART1
       UART1_OutString(csv_string);
