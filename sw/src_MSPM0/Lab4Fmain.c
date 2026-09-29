@@ -254,6 +254,7 @@ void Draw_Set_Screen(char* title, uint32_t display_hours, uint32_t display_mins)
 
 //Global Variables
 volatile uint32_t ADC_Volume_raw = 0; //samples the
+volatile uint32_t ADC_Value_Human = 0; //samples the
 volatile uint32_t DisplayMode = 0; //digital = 0, analog = 1
 volatile uint32_t Screen_sel = 0; //Which Screen display we are seeing on the LCD
 volatile uint32_t DisplayUpdate = 1; // Start at 1 to draw the initial screen
@@ -298,10 +299,10 @@ int main(void){
 
     // Build CSV string to send to Web Application// Student writes this
     if (Send_Flag == 1) {
-      char csv_string[32];
+      char csv_string[40];
       
       // Build CSV string: "Mode,Hour,Minute,Second\n"
-      sprintf(csv_string, "%d,%d,%d,%d\n", Mode, Hour, Minute, Second);
+      sprintf(csv_string, "%d,%d,%d,%d,%d\n", Mode, Hour, Minute, Second, ADC_Value_Human);
       
       // Send to ESP8266 via UART1
       UART1_OutString(csv_string);

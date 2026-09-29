@@ -45,7 +45,7 @@
 #define DEBUG2                      // Basic status messages on Serial port
 
 // ************************* CHANGE THE SSID TO BE UNIQUE ***********************
-#define AP_SSID     "EE445L"        // SoftAP network name. CHANGE THIS TO BE UNIQUE  (≤ 32 chars)
+#define AP_SSID     "aleena_tanai"        // SoftAP network name. CHANGE THIS TO BE UNIQUE  (≤ 32 chars)
 #define AP_PASS     "12345678"      // SoftAP password       (≥ 8 chars, or "" for open)
 #define AP_CHANNEL  6               // WiFi channel  1-13
 #define AP_HIDDEN   0               // 0 = broadcast SSID,  1 = hidden
@@ -78,6 +78,7 @@ char  mode[2]         = "";
 char  hour_buf[3]     = "";
 char  minute_buf[3]   = "";
 char  second_buf[3]   = "";
+char  ADC_buf[4]      = ""; //3 characters (up to 100) + null terminator
 char  cmd[20];
 char  ser_buf[128];
 
@@ -244,11 +245,11 @@ void msp2ws(void) {
                 tok = strtok(NULL, ",");  if (tok) strncpy(hour_buf,    tok, sizeof(hour_buf)    - 1);
                 tok = strtok(NULL, ",");  if (tok) strncpy(minute_buf,  tok, sizeof(minute_buf)  - 1);
                 tok = strtok(NULL, ",");  if (tok) strncpy(second_buf,  tok, sizeof(second_buf)  - 1);
+                tok = strtok(NULL, ",");  if (tok) strncpy(ADC_buf, tok, sizeof(ADC_buf) - 1);
 
                 // Broadcast to all connected browsers
-                char msg[32];
-                snprintf(msg, sizeof(msg), "%s,%s,%s,%s",
-                         mode, hour_buf, minute_buf, second_buf);
+                char msg[40];
+                snprintf(msg, sizeof(msg), "%s,%s,%s,%s,%s", mode, hour_buf, minute_buf, second_buf, ADC_buf);
 
                 #ifdef DEBUG1
                 Serial.print("[WS] TX → browser: ");

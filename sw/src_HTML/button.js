@@ -30,6 +30,7 @@ var hour      = "";
 var minute    = "";
 var second    = "";
 var mil_time  = "0";
+var ADC_human = "";
 
 // -----------------------------------------------------------------------
 // connect() — main entry point, called after page load
@@ -63,7 +64,7 @@ function onError(event) {
 }
 
 // -----------------------------------------------------------------------
-// onMessage — parse "mode,hour,minute,second" from ESP
+// onMessage — parse "mode,hour,minute,second,ADC_Value_Human" from ESP
 //
 function onMessage(event) {
     var data = event.data.trim();
@@ -75,6 +76,7 @@ function onMessage(event) {
         hour     = update(parseInt(parts[1]));
         minute   = update(parseInt(parts[2]));
         second   = update(parseInt(parts[3]));
+        ADC_human   = parseInt(parts[4]);
     }
 }
 
@@ -114,6 +116,7 @@ function Board_Time() {
     var period = "";
     var h = parseInt(hour, 10);
 
+    //Toggle
     if (mil_time === "0" || mil_time === 0) {
         if (h === 0) {
             h = 12; period = "AM";
@@ -126,8 +129,15 @@ function Board_Time() {
         }
     }
 
+    //update clock
     document.getElementById("board-clock").innerText =
         update(h) + " : " + minute + " : " + second + " " + period;
+
+    //update ADC volume slider
+    if (!isNaN(ADC_human)) {
+        document.getElementById("volume-slider").value = ADC_human; //move slider
+        document.getElementById("volume-text").innerHTML = "<b>Volume (Slidepot):</b> " + ADC_human; //update text above
+    }
 
     setTimeout(Board_Time, 1000);
 }
