@@ -67,15 +67,15 @@ volatile uint32_t Btn1_Press_Count = 0; //debug
 volatile uint32_t Btn2_Press_Count = 0; //debug
 
 // Global Clock State
-volatile uint8_t Mode = 0;   // 0 = 12-hour, 1 = 24-hour
-volatile uint8_t Hour = 12;
-volatile uint8_t Minute = 0;
-volatile uint8_t Second = 0;
+// volatile uint8_t Hour = 12;
+// volatile uint8_t Minute = 0;
+// volatile uint8_t Second = 0;
 
 // Time-of-day globals, maintained by TIMG0_IRQHandler, read by main()
 // NOTE: these are shared between the ISR (writer) and main() (reader).
 // See critical-section handling in Clock_Display() below.
 volatile uint32_t ms = 0;       // milliseconds, 0 to 999
+volatile uint8_t Mode = 0;   // 0 = 12-hour, 1 = 24-hour
 volatile uint32_t Seconds = 0;  // 0 to 59
 volatile uint32_t Minutes = 0;  // 0 to 59
 volatile uint32_t Hours   = 12; // 0 to 23, starting time -- change as needed
@@ -316,7 +316,7 @@ int main(void){
   NVIC->ICER[0] = (1U << 16);
   NVIC->ICPR[0] = (1U << 16);
 
-    LaunchPad_Init();
+  LaunchPad_Init();
   Clock_Init_HFXT_40_80MHz(0);
   UART_Init();          // debug UART
   UART1_Init();         // ESP UART, now ready before any use
@@ -357,6 +357,7 @@ int main(void){
     if (Send_Flag == 1) {
       char csv_string[40];
       uint32_t h, m, s;
+      Send_Flag = 0;
       __disable_irq();
       h = Hours; m = Minutes; s = Seconds;
       __enable_irq();
@@ -367,7 +368,6 @@ int main(void){
       // Send to ESP8266 via UART1
       UART1_OutString(csv_string);
       
-      Send_Flag = 0; 
     }
 
     
@@ -401,26 +401,35 @@ int main(void){
 // between reading Hours, Minutes, and Seconds separately.
 // ----------------------------------------------------------------------------
 void Clock_Display(void){
-  uint32_t myH, myM, myS;
-  char buffer[9]; // "HH:MM:SS" + null terminator
+  uint32_t myH, myM, myS, dispH;
+  char buffer[12];                 // "HH:MM:SS" + " AM"/"   " + null
+  const char *suffix = "   ";
 
   __disable_irq();
-  myH = Hours;
-  myM = Minutes;
-  myS = Seconds;
+  myH = Hours; myM = Minutes; myS = Seconds;
   __enable_irq();
 
-  buffer[0] = '0' + (myH/10);
-  buffer[1] = '0' + (myH%10);
-  buffer[2] = ':';
-  buffer[3] = '0' + (myM/10);
-  buffer[4] = '0' + (myM%10);
-  buffer[5] = ':';
-  buffer[6] = '0' + (myS/10);
-  buffer[7] = '0' + (myS%10);
-  buffer[8] = 0;
+  dispH = myH;
+  if(Mode == 0){                   // 12-hour display
+    suffix = (myH >= 12) ? " PM" : " AM";
+    dispH = myH % 12;
+    if(dispH == 0) dispH = 12;
+  }
 
-  ST7735_SetCursor(0, 13);   // pick a row below the startup text
+  buffer[0]  = '0' + (dispH/10);
+  buffer[1]  = '0' + (dispH%10);
+  buffer[2]  = ':';
+  buffer[3]  = '0' + (myM/10);
+  buffer[4]  = '0' + (myM%10);
+  buffer[5]  = ':';
+  buffer[6]  = '0' + (myS/10);
+  buffer[7]  = '0' + (myS%10);
+  buffer[8]  = suffix[0];
+  buffer[9]  = suffix[1];
+  buffer[10] = suffix[2];
+  buffer[11] = 0;
+
+  ST7735_SetCursor(0, 13);
   ST7735_OutString(buffer);
 }
 
@@ -635,8 +644,10 @@ void Button_Screen_Logic(void) {
     else if (Screen_sel == 2) {
       __disable_irq(); // Enter critical section
       // Set Time: Increment the active value
-      if (CursorPos == 0) { Hours++; if (Hours > 12) Hours = 1; }
-      if (CursorPos == 1) { Minutes++; if (Minutes > 59) Minutes = 0; }
+      // if (CursorPos == 0) { Hours++; if (Hours > 12) Hours = 1; }
+      // if (CursorPos == 1) { Minutes++; if (Minutes > 59) Minutes = 0; }
+      if (CursorPos == 0) { Hours = (Hours + 1) % 24; }
+      if (CursorPos == 1) { Minutes = (Minutes + 1) % 60; }
       Seconds = 0; //default
       __enable_irq();  // Exit critical section
     }
@@ -644,8 +655,10 @@ void Button_Screen_Logic(void) {
     // Navigate Alarm Time Set
     else if (Screen_sel == 3) {
       // Set Alarm: Increment the active value
-      if (CursorPos == 0) { AlarmHours++; if (AlarmHours > 12) AlarmHours = 1; }
-      if (CursorPos == 1) { AlarmMins++; if (AlarmMins > 59) AlarmMins = 0; }
+      // if (CursorPos == 0) { AlarmHours++; if (AlarmHours > 12) AlarmHours = 1; }
+      // if (CursorPos == 1) { AlarmMins++; if (AlarmMins > 59) AlarmMins = 0; }
+      if (CursorPos == 0) { AlarmHours = (AlarmHours + 1) % 24; }
+      if (CursorPos == 1) { AlarmMins  = (AlarmMins  + 1) % 60; }
       AlarmSeconds = 0; //default
     }
     
