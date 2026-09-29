@@ -197,7 +197,8 @@ void UART1_Init(void){
    // bit  2   EPS=0   parity select
    // bit  1   PEN=0   no parity
    // bit  0   BRK=0   no break
-  UART1->CPU_INT.IMASK = 0;
+  UART1->CPU_INT.IMASK = 0x0801;
+  NVIC->ISER[0] = 1 << 13;
   // bit 11 TXINT=0 no transmit interrupt
   // bit 10 RXINT=0 no receive interrupt
   // bit 0  Receive timeout
