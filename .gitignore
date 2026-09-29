@@ -69,7 +69,6 @@ dkms.conf
 
 # Listing files
 *.cod
-*.htm
 *.i
 *.lst
 *.map

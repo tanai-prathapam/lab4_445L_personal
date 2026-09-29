@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<meta charset="UTF-8">
+		<title>EE445L Clock — SoftAP WebSocket</title>
+
+		<style>
+		.button {
+  			border: none;
+  			color: white;
+  			padding: 15px 32px;
+  			text-align: center;
+  			text-decoration: none;
+  			display: inline-block;
+  			font-size: 14px;
+  			margin: 4px 2px;
+  			cursor: pointer;
+		}
+
+		.button_am_pm  {background-color: #4CAF50;}
+		.button_24hour {background-color: #008CBA;}
+		.button_hour   {background-color: #545faa;}
+		.button_min    {background-color: #2a5121;}
+		.button_sec    {background-color: #4c827b;}
+
+        hr {
+            border: none;
+            height: 5px;
+            background-color: #a2ecee;
+        }
+
+        #ws-status {
+            font-family: verdana, sans-serif;
+            font-size: 12px;
+            margin-left: 65px;
+            margin-top: 4px;
+        }
+		</style>
+
+        <link rel="stylesheet" href="lib/styles.css">
+	</head>
+
+	<body>
+
+        <h3 style="font-family:verdana; margin-left: 30px;">
+            Board Time
+        </h3>
+
+        <!-- Flex container to align items side-by-side -->
+        <div style="display: flex; align-items: center; gap: 80px; margin-left: 30px;">
+            
+            <!-- Left Side: Clock and Connection Status -->
+            <div>
+                <div id="board-clock" style="font-size: 24px; font-weight: bold;"></div>
+                <div id="ws-status" style="margin-left: 0px; margin-top: 10px;">Connecting…</div>
+            </div>
+
+            <!-- Right Side: Volume Telemetry Display -->
+            <div>
+                <p id="volume-text" style="font-family:verdana; font-size: 14px; color: #333; margin-top: 0; margin-bottom: 5px;">
+                    <b>Volume (Slidepot):</b> 0
+                </p>
+                <input type="range" id="volume-slider" min="0" max="4095" value="0" disabled style="width: 200px;">
+            </div>
+
+        </div>
+
+        <script src="button.js"></script>
+        <br><br>
+
+	  <p>
+		<button class="button button_hour"   onclick="inc_hour();"       style="width:130px;height:40px">HOUR ++</button>
+		<button class="button button_min"    onclick="inc_min();"        style="width:130px;height:40px">MIN ++</button>
+		<button class="button button_sec"    onclick="inc_sec();"        style="width:130px;height:40px">SEC ++</button>
+	  </p>
+
+	  <p>
+		<button class="button button_hour"   onclick="dec_hour();"       style="width:130px;height:40px">HOUR --</button>
+		<button class="button button_min"    onclick="dec_min();"        style="width:130px;height:40px">MIN --</button>
+		<button class="button button_sec"    onclick="dec_sec();"        style="width:130px;height:40px">SEC --</button>
+	  </p>
+      <p>
+        <button class="button button_24hour" onclick="toggle_mil_time();" style="width:130px;height:40px">12/24</button>
+      </p>
+
+    
+
+     <!-- Connect to ESP8266 SoftAP WebSocket server at fixed IP 192.168.4.1:81 -->
+		<script>connect();</script>
+
+	</body>
+</html>
