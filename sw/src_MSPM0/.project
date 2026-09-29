@@ -73,7 +73,7 @@
 		<link>
             		<name>ADC.c</name>
             		<type>1</type>
-            		<locationURI>PARENT-1-PROJECT_LOC/lib/ADC.c</locationURI>
+            		<locationURI>PARENT-1-PROJECT_LOC/lib/ADC_aleena.c</locationURI>
         	</link>
 		<link>
 			<name>FIFO.c</name>

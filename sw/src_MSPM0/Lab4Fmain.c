@@ -26,10 +26,12 @@
 #include "Lab3.h"
 #include <math.h>
 #include "../inc/ADC.h"
-#include "../lib/ADC.h"
+#include "../lib/ADC_aleena.h"
 #include "../lib/Sound.h"
 #include "../lib/ClockFace.h"   // provides: const unsigned short clock[6400]  (80x80 bitmap)
 #include "../inc/UART.h"
+#include "../lib/UART.h"
+#include "../lib/FIFO.h"
 
 // Global Clock State
 volatile uint8_t Mode = 0;   // 0 = 12-hour, 1 = 24-hour
